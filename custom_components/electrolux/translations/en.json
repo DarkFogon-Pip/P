@@ -1,0 +1,149 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "This Electrolux account is already configured."
+    },
+    "error": {
+      "cannot_connect": "Unable to connect to the Electrolux API. Please check your credentials and try again.",
+      "invalid_auth": "Authentication failed. Please check your credentials.",
+      "unknown": "An unexpected error occurred."
+    },
+    "step": {
+      "user": {
+        "data": {
+          "api_key": "API key",
+          "access_token": "Access token",
+          "refresh_token": "Refresh token"
+        },
+        "data_description": {
+          "api_key": "Your Electrolux Developer Portal API key.",
+          "access_token": "The access token from the Electrolux Developer Portal.",
+          "refresh_token": "The refresh token used to renew your access token."
+        },
+        "description": "Please [click here]({portal_link}) to generate new access and refresh tokens, then paste them below.",
+        "title": "Configure your Electrolux account"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "appliance_state": {
+        "name": "Appliance state"
+      },
+      "door_state": {
+        "name": "Door state"
+      },
+      "display_temperature": {
+        "name": "Display temperature"
+      },
+      "food_probe_temperature": {
+        "name": "Food probe temperature"
+      },
+      "time_to_end": {
+        "name": "Time to end"
+      },
+      "current_program": {
+        "name": "Current program"
+      },
+      "ambient_temperature": {
+        "name": "Ambient temperature"
+      },
+      "pm25": {
+        "name": "PM2.5"
+      },
+      "pm10": {
+        "name": "PM10"
+      },
+      "pm1": {
+        "name": "PM1"
+      },
+      "tvoc": {
+        "name": "TVOC"
+      },
+      "current_humidity": {
+        "name": "Current humidity"
+      },
+      "cycle_phase": {
+        "name": "Cycle phase"
+      },
+      "battery": {
+        "name": "Battery"
+      },
+      "fan_level": {
+        "name": "Fan level"
+      }
+    },
+    "binary_sensor": {
+      "door": {
+        "name": "Door"
+      },
+      "connection": {
+        "name": "Connection"
+      },
+      "docked": {
+        "name": "Docked"
+      }
+    },
+    "climate": {
+      "air_conditioner": {
+        "name": "Air conditioner"
+      },
+      "dehumidifier": {
+        "name": "Dehumidifier"
+      }
+    },
+    "switch": {
+      "cavity_light": {
+        "name": "Cavity light"
+      },
+      "power": {
+        "name": "Power"
+      },
+      "child_lock": {
+        "name": "Child lock"
+      },
+      "vacation_mode": {
+        "name": "Vacation mode"
+      }
+    },
+    "button": {
+      "start": {
+        "name": "Start"
+      },
+      "stop": {
+        "name": "Stop"
+      },
+      "pause": {
+        "name": "Pause"
+      },
+      "resume": {
+        "name": "Resume"
+      },
+      "dock": {
+        "name": "Dock"
+      }
+    },
+    "select": {
+      "program": {
+        "name": "Program"
+      },
+      "mode": {
+        "name": "Mode"
+      }
+    },
+    "number": {
+      "target_temperature": {
+        "name": "Target temperature"
+      },
+      "fan_speed": {
+        "name": "Fan speed"
+      },
+      "hood_fan_level": {
+        "name": "Fan level"
+      },
+      "light_intensity": {
+        "name": "Light intensity"
+      }
+    }
+  }
+}
