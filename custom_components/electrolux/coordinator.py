@@ -16,12 +16,16 @@ from electrolux_group_developer_sdk.client.dto.appliance_state import ApplianceS
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import ElectroluxApiClient
 from .const import DOMAIN
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+# Delay to re-poll after time_to_end reaches 0 (Electrolux API bug workaround)
+END_OF_CYCLE_REFRESH_DELAY = 70
 
 
 @dataclass(kw_only=True, slots=True)
@@ -50,6 +54,8 @@ class ElectroluxDataUpdateCoordinator(DataUpdateCoordinator[ApplianceState]):
         """Initialize."""
         self.client = client
         self._appliance_id = appliance_id
+        self._deferred_refresh_unsub = None
+        self._last_time_to_end: int | None = None
         super().__init__(
             hass,
             _LOGGER,
@@ -71,8 +77,11 @@ class ElectroluxDataUpdateCoordinator(DataUpdateCoordinator[ApplianceState]):
             raise UpdateFailed(exception) from exception
 
     def remove_listeners(self) -> None:
-        """Remove all SSE listeners."""
+        """Remove all SSE listeners and cancel deferred refresh."""
         self.client.remove_all_listeners_by_appliance_id(self._appliance_id)
+        if self._deferred_refresh_unsub:
+            self._deferred_refresh_unsub()
+            self._deferred_refresh_unsub = None
 
     def callback_handle_event(self, event: dict) -> None:
         """Handle an incoming SSE event."""
@@ -90,6 +99,42 @@ class ElectroluxDataUpdateCoordinator(DataUpdateCoordinator[ApplianceState]):
         )
 
         self.async_set_updated_data(updated_state)
+
+        # Deferred end-of-cycle refresh workaround:
+        # Electrolux does not send updated state after a cycle ends.
+        # When timeToEnd drops to 0, schedule a full refresh after a delay.
+        prop = event.get("property", "")
+        if "timeToEnd" in prop or "TimeToEnd" in prop:
+            value = event.get("value")
+            try:
+                time_val = int(value) if value is not None else None
+            except (TypeError, ValueError):
+                time_val = None
+
+            prev = self._last_time_to_end
+            if (
+                time_val is not None
+                and time_val <= 0
+                and prev is not None
+                and prev > 0
+            ):
+                self._schedule_deferred_refresh()
+            self._last_time_to_end = time_val
+
+    def _schedule_deferred_refresh(self) -> None:
+        """Schedule a deferred full state refresh after end of cycle."""
+        if self._deferred_refresh_unsub:
+            self._deferred_refresh_unsub()
+
+        async def _do_refresh(_now) -> None:
+            _LOGGER.debug(
+                "Deferred end-of-cycle refresh for %s", self._appliance_id
+            )
+            await self.async_request_refresh()
+
+        self._deferred_refresh_unsub = async_call_later(
+            self.hass, END_OF_CYCLE_REFRESH_DELAY, _do_refresh
+        )
 
     def _apply_sse_update(
         self, state: ApplianceState, event: dict

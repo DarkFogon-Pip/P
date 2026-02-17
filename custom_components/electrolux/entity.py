@@ -2,6 +2,7 @@
 
 from abc import abstractmethod
 import logging
+from typing import Any
 
 from electrolux_group_developer_sdk.client.appliances.appliance_data import (
     ApplianceData,
@@ -21,6 +22,7 @@ class ElectroluxBaseEntity(CoordinatorEntity[ElectroluxDataUpdateCoordinator]):
     """Base class for Electrolux entities."""
 
     _attr_has_entity_name = True
+    _cached_extra_attrs: dict[str, Any] | None = None
 
     def __init__(
         self,

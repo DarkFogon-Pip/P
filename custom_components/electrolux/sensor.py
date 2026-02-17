@@ -34,6 +34,7 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import (
     CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+    EntityCategory,
     PERCENTAGE,
     UnitOfTemperature,
     UnitOfTime,
@@ -65,12 +66,6 @@ OVEN_SENSORS: tuple[ElectroluxSensorDescription, ...] = (
         value_fn=lambda a: a.get_current_appliance_state(),
     ),
     ElectroluxSensorDescription(
-        key="ov_door_state",
-        translation_key="door_state",
-        icon="mdi:door",
-        value_fn=lambda a: a.get_current_door_state(),
-    ),
-    ElectroluxSensorDescription(
         key="ov_display_temperature",
         translation_key="display_temperature",
         icon="mdi:thermometer",
@@ -94,6 +89,7 @@ OVEN_SENSORS: tuple[ElectroluxSensorDescription, ...] = (
         icon="mdi:timer-outline",
         device_class=SensorDeviceClass.DURATION,
         native_unit_of_measurement=UnitOfTime.SECONDS,
+        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda a: a.get_current_time_to_end(),
     ),
     ElectroluxSensorDescription(
@@ -101,6 +97,24 @@ OVEN_SENSORS: tuple[ElectroluxSensorDescription, ...] = (
         translation_key="current_program",
         icon="mdi:chef-hat",
         value_fn=lambda a: a.get_current_program(),
+    ),
+    ElectroluxSensorDescription(
+        key="ov_running_time",
+        translation_key="running_time",
+        icon="mdi:timer",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.SECONDS,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        value_fn=lambda a: a.get_current_running_time(),
+    ),
+    ElectroluxSensorDescription(
+        key="ov_remote_control",
+        translation_key="remote_control",
+        icon="mdi:remote",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        value_fn=lambda a: a.get_current_remote_control(),
     ),
 )
 
@@ -114,6 +128,14 @@ AC_SENSORS: tuple[ElectroluxSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda a: a.get_current_ambient_temperature_c(),
+    ),
+    ElectroluxSensorDescription(
+        key="ac_appliance_state",
+        translation_key="appliance_state",
+        icon="mdi:air-conditioner",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        value_fn=lambda a: a.get_current_appliance_state(),
     ),
 )
 
@@ -194,6 +216,7 @@ LAUNDRY_SENSORS: tuple[ElectroluxSensorDescription, ...] = (
         icon="mdi:timer-outline",
         device_class=SensorDeviceClass.DURATION,
         native_unit_of_measurement=UnitOfTime.SECONDS,
+        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda a: a.get_current_time_to_end(),
     ),
     ElectroluxSensorDescription(
@@ -201,6 +224,14 @@ LAUNDRY_SENSORS: tuple[ElectroluxSensorDescription, ...] = (
         translation_key="current_program",
         icon="mdi:format-list-bulleted",
         value_fn=lambda a: a.get_current_program(),
+    ),
+    ElectroluxSensorDescription(
+        key="laundry_remote_control",
+        translation_key="remote_control",
+        icon="mdi:remote",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        value_fn=lambda a: a.get_current_remote_control(),
     ),
 )
 
@@ -224,6 +255,7 @@ DISHWASHER_SENSORS: tuple[ElectroluxSensorDescription, ...] = (
         icon="mdi:timer-outline",
         device_class=SensorDeviceClass.DURATION,
         native_unit_of_measurement=UnitOfTime.SECONDS,
+        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda a: a.get_current_time_to_end(),
     ),
     ElectroluxSensorDescription(
@@ -256,10 +288,12 @@ RVC_SENSORS: tuple[ElectroluxSensorDescription, ...] = (
 # --- Refrigerator sensors ---
 CR_SENSORS: tuple[ElectroluxSensorDescription, ...] = (
     ElectroluxSensorDescription(
-        key="cr_appliance_state",
-        translation_key="appliance_state",
-        icon="mdi:fridge-outline",
-        value_fn=lambda a: _get_cr_cavity_state(a, "fridge"),
+        key="cr_ui_lock",
+        translation_key="ui_lock_mode",
+        icon="mdi:lock-outline",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        value_fn=lambda a: a.get_current_ui_lock_mode(),
     ),
 )
 
@@ -272,10 +306,12 @@ HD_SENSORS: tuple[ElectroluxSensorDescription, ...] = (
         value_fn=lambda a: a.get_current_appliance_state(),
     ),
     ElectroluxSensorDescription(
-        key="hd_fan_level",
-        translation_key="fan_level",
-        icon="mdi:fan",
-        value_fn=lambda a: a.get_current_hood_fan_level(),
+        key="hd_grease_filter_time",
+        translation_key="grease_filter_time",
+        icon="mdi:air-filter",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        value_fn=lambda a: a.get_current_hood_grease_filter_time(),
     ),
 )
 
@@ -287,14 +323,6 @@ def _ap_supports_air_quality(appliance: APAppliance, quality: str) -> bool:
         return quality in aq_map
     except Exception:
         return False
-
-
-def _get_cr_cavity_state(appliance: CRAppliance, cavity: str) -> Any:
-    """Get the state of a refrigerator cavity."""
-    try:
-        return appliance.get_current_cavity_appliance_state(cavity)
-    except Exception:
-        return None
 
 
 def build_entities_for_appliance(
@@ -350,7 +378,6 @@ def build_entities_for_appliance(
             ElectroluxSensor(appliance_data, coordinator, desc)
             for desc in CR_SENSORS
         )
-        # Add per-cavity temperature sensors
         try:
             cavities = appliance_data.get_supported_cavities()
             for cavity in cavities:
@@ -376,6 +403,12 @@ def build_entities_for_appliance(
                     value_fn=lambda a: a.get_current_appliance_state(),
                 ),
             )
+        )
+
+    # Alert sensor for all appliances that support alerts
+    if hasattr(appliance_data, "get_current_alerts"):
+        entities.append(
+            ElectroluxAlertSensor(appliance_data, coordinator)
         )
 
     return entities
@@ -409,16 +442,21 @@ class ElectroluxSensor(ElectroluxBaseEntity, SensorEntity):
         self._attr_unique_id = (
             f"{appliance_data.appliance.applianceId}_{description.key}"
         )
+        self._cached_value: StateType = None
         self._update_attr_state()
 
     def _update_attr_state(self) -> None:
-        """Update sensor value."""
+        """Update sensor value with caching."""
         try:
-            self._attr_native_value = self.entity_description.value_fn(
-                self._appliance_data
-            )
+            value = self.entity_description.value_fn(self._appliance_data)
+            if value is not None:
+                self._cached_value = value
+                self._attr_native_value = value
+            else:
+                # Return cached value to avoid flashing "unavailable"
+                self._attr_native_value = self._cached_value
         except Exception:
-            self._attr_native_value = None
+            self._attr_native_value = self._cached_value
 
 
 class ElectroluxCavityTempSensor(ElectroluxBaseEntity, SensorEntity):
@@ -437,19 +475,63 @@ class ElectroluxCavityTempSensor(ElectroluxBaseEntity, SensorEntity):
         self._attr_unique_id = (
             f"{appliance_data.appliance.applianceId}_{cavity}_temperature"
         )
-        self._attr_translation_key = f"{cavity}_temperature"
         self._attr_icon = "mdi:thermometer"
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
         self._attr_name = f"{cavity.replace('_', ' ').title()} temperature"
+        self._cached_value: StateType = None
         self._update_attr_state()
 
     def _update_attr_state(self) -> None:
-        """Update cavity temperature."""
+        """Update cavity temperature with caching."""
         try:
-            self._attr_native_value = (
-                self._cr.get_current_cavity_target_temperature_c(self._cavity)
-            )
+            value = self._cr.get_current_cavity_target_temperature_c(self._cavity)
+            if value is not None:
+                self._cached_value = value
+                self._attr_native_value = value
+            else:
+                self._attr_native_value = self._cached_value
         except Exception:
-            self._attr_native_value = None
+            self._attr_native_value = self._cached_value
+
+
+class ElectroluxAlertSensor(ElectroluxBaseEntity, SensorEntity):
+    """Alert sensor that exposes active alerts as state attributes."""
+
+    _attr_icon = "mdi:alert-circle-outline"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+
+    def __init__(
+        self,
+        appliance_data: ApplianceData,
+        coordinator: ElectroluxDataUpdateCoordinator,
+    ) -> None:
+        """Initialize alert sensor."""
+        super().__init__(appliance_data, coordinator)
+        self._attr_unique_id = (
+            f"{appliance_data.appliance.applianceId}_alerts"
+        )
+        self._attr_translation_key = "alerts"
+        self._attr_name = "Alerts"
+        self._update_attr_state()
+
+    def _update_attr_state(self) -> None:
+        """Update alert count and details."""
+        try:
+            alerts = self._appliance_data.get_current_alerts()
+            if alerts and isinstance(alerts, (list, dict)):
+                if isinstance(alerts, list):
+                    self._attr_native_value = len(alerts)
+                    self._attr_extra_state_attributes = {"alerts": alerts}
+                elif isinstance(alerts, dict):
+                    active = {k: v for k, v in alerts.items() if v}
+                    self._attr_native_value = len(active)
+                    self._attr_extra_state_attributes = {"alerts": active}
+            else:
+                self._attr_native_value = 0
+                self._attr_extra_state_attributes = {"alerts": {}}
+        except Exception:
+            self._attr_native_value = 0
+            self._attr_extra_state_attributes = {"alerts": {}}
