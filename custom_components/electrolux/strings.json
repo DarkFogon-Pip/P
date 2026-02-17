@@ -4,7 +4,7 @@
       "already_configured": "This Electrolux account is already configured."
     },
     "error": {
-      "cannot_connect": "Unable to connect to the Electrolux API. Please check your credentials and try again.",
+      "cannot_connect": "Unable to connect to the Electrolux API. Please check your credentials.",
       "invalid_auth": "Authentication failed. Please check your credentials.",
       "unknown": "An unexpected error occurred."
     },
@@ -18,70 +18,77 @@
         "data_description": {
           "api_key": "Your Electrolux Developer Portal API key.",
           "access_token": "The access token from the Electrolux Developer Portal.",
-          "refresh_token": "The refresh token used to renew your access token."
+          "refresh_token": "The refresh token used to renew your access token automatically."
         },
-        "description": "Please [click here]({portal_link}) to generate new access and refresh tokens, then paste them below.",
+        "description": "Please [click here]({portal_link}) to generate new tokens, then paste them below.",
         "title": "Configure your Electrolux account"
+      },
+      "reauth_confirm": {
+        "data": {
+          "api_key": "API key",
+          "access_token": "Access token",
+          "refresh_token": "Refresh token"
+        },
+        "data_description": {
+          "api_key": "Your Electrolux Developer Portal API key.",
+          "access_token": "The new access token from the Electrolux Developer Portal.",
+          "refresh_token": "The new refresh token."
+        },
+        "description": "Your Electrolux tokens have expired. Please [click here]({portal_link}) to generate new tokens.",
+        "title": "Reauthenticate your Electrolux account"
+      }
+    }
+  },
+  "options": {
+    "error": {
+      "cannot_connect": "Unable to connect to the Electrolux API. Please check your credentials.",
+      "invalid_auth": "Authentication failed. Please check your credentials.",
+      "unknown": "An unexpected error occurred."
+    },
+    "step": {
+      "init": {
+        "data": {
+          "api_key": "API key",
+          "access_token": "Access token",
+          "refresh_token": "Refresh token"
+        },
+        "data_description": {
+          "api_key": "Your Electrolux Developer Portal API key.",
+          "access_token": "The new access token from the Electrolux Developer Portal.",
+          "refresh_token": "The new refresh token."
+        },
+        "description": "Please [click here]({portal_link}) to generate new tokens.",
+        "title": "Update Electrolux credentials"
       }
     }
   },
   "entity": {
-    "sensor": {
-      "appliance_state": {
-        "name": "Appliance state"
-      },
-      "door_state": {
-        "name": "Door state"
-      },
-      "display_temperature": {
-        "name": "Display temperature"
-      },
-      "food_probe_temperature": {
-        "name": "Food probe temperature"
-      },
-      "time_to_end": {
-        "name": "Time to end"
-      },
-      "current_program": {
-        "name": "Current program"
-      },
-      "ambient_temperature": {
-        "name": "Ambient temperature"
-      },
-      "pm25": {
-        "name": "PM2.5"
-      },
-      "pm10": {
-        "name": "PM10"
-      },
-      "pm1": {
-        "name": "PM1"
-      },
-      "tvoc": {
-        "name": "TVOC"
-      },
-      "current_humidity": {
-        "name": "Current humidity"
-      },
-      "cycle_phase": {
-        "name": "Cycle phase"
-      },
-      "battery": {
-        "name": "Battery"
-      },
-      "fan_level": {
-        "name": "Fan level"
-      }
-    },
     "binary_sensor": {
-      "door": {
-        "name": "Door"
-      },
       "connection": {
         "name": "Connection"
       },
       "docked": {
         "name": "Docked"
+      },
+      "door": {
+        "name": "Door"
+      }
+    },
+    "button": {
+      "dock": {
+        "name": "Dock"
+      },
+      "pause": {
+        "name": "Pause"
+      },
+      "resume": {
+        "name": "Resume"
+      },
+      "start": {
+        "name": "Start"
+      },
+      "stop": {
+        "name": "Stop"
       }
     },
     "climate": {
@@ -92,49 +99,12 @@
         "name": "Dehumidifier"
       }
     },
-    "switch": {
-      "cavity_light": {
-        "name": "Cavity light"
-      },
-      "power": {
-        "name": "Power"
-      },
-      "child_lock": {
-        "name": "Child lock"
-      },
-      "vacation_mode": {
-        "name": "Vacation mode"
-      }
-    },
-    "button": {
-      "start": {
-        "name": "Start"
-      },
-      "stop": {
-        "name": "Stop"
-      },
-      "pause": {
-        "name": "Pause"
-      },
-      "resume": {
-        "name": "Resume"
-      },
-      "dock": {
-        "name": "Dock"
-      }
-    },
-    "select": {
-      "program": {
-        "name": "Program"
-      },
-      "mode": {
-        "name": "Mode"
+    "fan": {
+      "air_purifier": {
+        "name": "Air purifier"
       }
     },
     "number": {
-      "target_temperature": {
-        "name": "Target temperature"
-      },
       "fan_speed": {
         "name": "Fan speed"
       },
@@ -143,6 +113,90 @@
       },
       "light_intensity": {
         "name": "Light intensity"
+      },
+      "target_temperature": {
+        "name": "Target temperature"
+      }
+    },
+    "select": {
+      "mode": {
+        "name": "Mode"
+      },
+      "program": {
+        "name": "Program"
+      }
+    },
+    "sensor": {
+      "alerts": {
+        "name": "Alerts"
+      },
+      "ambient_temperature": {
+        "name": "Ambient temperature"
+      },
+      "appliance_state": {
+        "name": "State"
+      },
+      "battery": {
+        "name": "Battery"
+      },
+      "current_humidity": {
+        "name": "Humidity"
+      },
+      "current_program": {
+        "name": "Program"
+      },
+      "cycle_phase": {
+        "name": "Cycle phase"
+      },
+      "display_temperature": {
+        "name": "Temperature"
+      },
+      "fan_level": {
+        "name": "Fan level"
+      },
+      "food_probe_temperature": {
+        "name": "Food probe temperature"
+      },
+      "grease_filter_time": {
+        "name": "Grease filter time"
+      },
+      "pm1": {
+        "name": "PM1"
+      },
+      "pm10": {
+        "name": "PM10"
+      },
+      "pm25": {
+        "name": "PM2.5"
+      },
+      "remote_control": {
+        "name": "Remote control"
+      },
+      "running_time": {
+        "name": "Running time"
+      },
+      "time_to_end": {
+        "name": "Time remaining"
+      },
+      "tvoc": {
+        "name": "TVOC"
+      },
+      "ui_lock_mode": {
+        "name": "UI lock"
+      }
+    },
+    "switch": {
+      "cavity_light": {
+        "name": "Cavity light"
+      },
+      "child_lock": {
+        "name": "Child lock"
+      },
+      "power": {
+        "name": "Power"
+      },
+      "vacation_mode": {
+        "name": "Vacation mode"
       }
     }
   }
