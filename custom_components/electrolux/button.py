@@ -41,7 +41,24 @@ def build_entities_for_appliance(
 
     entities: list[ElectroluxBaseEntity] = []
 
-    if isinstance(appliance_data, CYCLE_APPLIANCE_TYPES):
+    if isinstance(appliance_data, SOAppliance):
+        # SO ovens need per-cavity start/stop
+        try:
+            cavities = appliance_data.get_supported_cavities()
+            for cavity in cavities:
+                entities.extend([
+                    ElectroluxCommandButton(
+                        appliance_data, coordinator, "start", "mdi:play",
+                        lambda a, c=cavity: a.get_start_command(c),
+                    ),
+                    ElectroluxCommandButton(
+                        appliance_data, coordinator, "stop", "mdi:stop",
+                        lambda a, c=cavity: a.get_stop_command(c),
+                    ),
+                ])
+        except Exception:
+            pass
+    elif isinstance(appliance_data, CYCLE_APPLIANCE_TYPES):
         entities.extend([
             ElectroluxCommandButton(
                 appliance_data, coordinator, "start", "mdi:play",

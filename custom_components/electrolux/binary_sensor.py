@@ -22,6 +22,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
@@ -30,6 +31,14 @@ from .entity import ElectroluxBaseEntity
 from .entity_helper import async_setup_entities_helper
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _get_raw_property(appliance, key):
+    """Get a raw property from the reported state."""
+    try:
+        return appliance.state.properties.get("reported", {}).get(key)
+    except Exception:
+        return None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -114,6 +123,64 @@ def build_entities_for_appliance(
     if isinstance(appliance_data, RVCAppliance):
         entities.append(
             ElectroluxBinarySensor(appliance_data, coordinator, RVC_DOCKED_SENSOR)
+        )
+
+    # Oven-specific binary sensors
+    if isinstance(appliance_data, (OVAppliance, SOAppliance)):
+        entities.append(
+            ElectroluxBinarySensor(
+                appliance_data, coordinator,
+                ElectroluxBinarySensorDescription(
+                    key="food_probe_inserted",
+                    translation_key="food_probe_inserted",
+                    icon="mdi:thermometer-probe",
+                    is_on_fn=lambda a: (
+                        (hasattr(a, "get_current_food_probe_insertion_state")
+                         and a.get_current_food_probe_insertion_state() == "INSERTED")
+                        or _get_raw_property(a, "foodProbeInsertionState") == "INSERTED"
+                    ),
+                ),
+            )
+        )
+        entities.append(
+            ElectroluxBinarySensor(
+                appliance_data, coordinator,
+                ElectroluxBinarySensorDescription(
+                    key="water_tank_empty",
+                    translation_key="water_tank_empty",
+                    icon="mdi:water-alert",
+                    is_on_fn=lambda a: (
+                        _get_raw_property(a, "waterTankEmpty") not in (None, "STEAM_TANK_FULL", "OK")
+                    ),
+                ),
+            )
+        )
+
+    # SO-specific binary sensors (cleaning/descaling reminders)
+    if isinstance(appliance_data, SOAppliance):
+        entities.append(
+            ElectroluxBinarySensor(
+                appliance_data, coordinator,
+                ElectroluxBinarySensorDescription(
+                    key="cleaning_reminder",
+                    translation_key="cleaning_reminder",
+                    icon="mdi:broom",
+                    entity_category=EntityCategory.DIAGNOSTIC,
+                    is_on_fn=lambda a: _get_raw_property(a, "cleaningReminder") in (True, "TRUE", "true"),
+                ),
+            )
+        )
+        entities.append(
+            ElectroluxBinarySensor(
+                appliance_data, coordinator,
+                ElectroluxBinarySensorDescription(
+                    key="descaling_reminder",
+                    translation_key="descaling_reminder",
+                    icon="mdi:water-remove",
+                    entity_category=EntityCategory.DIAGNOSTIC,
+                    is_on_fn=lambda a: _get_raw_property(a, "descalingReminderState") in (True, "TRUE", "true"),
+                ),
+            )
         )
 
     # Per-cavity door sensors for refrigerators

@@ -35,7 +35,17 @@ def build_entities_for_appliance(
     entities: list[ElectroluxBaseEntity] = []
 
     # Oven target temperature
-    if isinstance(appliance_data, (OVAppliance, SOAppliance)):
+    if isinstance(appliance_data, SOAppliance):
+        # SO uses per-cavity temperature
+        try:
+            cavities = appliance_data.get_supported_cavities()
+            for cavity in cavities:
+                entities.append(
+                    ElectroluxSOCavityTemperature(appliance_data, coordinator, cavity)
+                )
+        except Exception:
+            pass
+    elif isinstance(appliance_data, OVAppliance):
         entities.append(
             ElectroluxOvenTemperature(appliance_data, coordinator)
         )
@@ -131,6 +141,62 @@ class ElectroluxOvenTemperature(ElectroluxBaseEntity, NumberEntity):
     async def async_set_native_value(self, value: float) -> None:
         """Set target temperature."""
         command = self._ov.get_temperature_c_command(int(value))
+        await self.coordinator.client.send_command(self.appliance_id, command)
+        await self.coordinator.async_request_refresh()
+
+
+class ElectroluxSOCavityTemperature(ElectroluxBaseEntity, NumberEntity):
+    """Number entity for SO oven per-cavity target temperature."""
+
+    _attr_translation_key = "target_temperature"
+    _attr_icon = "mdi:thermometer"
+    _attr_mode = NumberMode.SLIDER
+
+    def __init__(
+        self,
+        appliance_data: SOAppliance,
+        coordinator: ElectroluxDataUpdateCoordinator,
+        cavity: str,
+    ) -> None:
+        """Initialize."""
+        super().__init__(appliance_data, coordinator)
+        self._so = appliance_data
+        self._cavity = cavity
+        prefix = cavity.lower().replace(" ", "_")
+        self._attr_unique_id = (
+            f"{appliance_data.appliance.applianceId}_{prefix}_target_temperature"
+        )
+        self._attr_name = "Target temperature"
+        self._attr_native_unit_of_measurement = "°C"
+
+        try:
+            self._attr_native_min_value = float(
+                appliance_data.get_cavity_supported_min_temp(cavity) or 0
+            )
+            self._attr_native_max_value = float(
+                appliance_data.get_cavity_supported_max_temp(cavity) or 300
+            )
+            self._attr_native_step = float(
+                appliance_data.get_cavity_supported_step_temp(cavity) or 5
+            )
+        except Exception:
+            self._attr_native_min_value = 0.0
+            self._attr_native_max_value = 300.0
+            self._attr_native_step = 5.0
+
+        self._update_attr_state()
+
+    def _update_attr_state(self) -> None:
+        """Update target temperature."""
+        try:
+            temp = self._so.get_current_cavity_target_temperature_c(self._cavity)
+            self._attr_native_value = float(temp) if temp is not None else None
+        except Exception:
+            self._attr_native_value = None
+
+    async def async_set_native_value(self, value: float) -> None:
+        """Set target temperature."""
+        command = self._so.get_temperature_c_command(self._cavity, int(value))
         await self.coordinator.client.send_command(self.appliance_id, command)
         await self.coordinator.async_request_refresh()
 

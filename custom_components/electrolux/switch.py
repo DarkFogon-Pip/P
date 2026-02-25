@@ -36,7 +36,17 @@ def build_entities_for_appliance(
     entities: list[ElectroluxBaseEntity] = []
 
     # Oven cavity light
-    if isinstance(appliance_data, (OVAppliance, SOAppliance)):
+    if isinstance(appliance_data, SOAppliance):
+        # SO uses per-cavity light
+        try:
+            cavities = appliance_data.get_supported_cavities()
+            for cavity in cavities:
+                entities.append(
+                    ElectroluxSOCavityLightSwitch(appliance_data, coordinator, cavity)
+                )
+        except Exception:
+            pass
+    elif isinstance(appliance_data, OVAppliance):
         entities.append(
             ElectroluxCavityLightSwitch(appliance_data, coordinator)
         )
@@ -51,6 +61,12 @@ def build_entities_for_appliance(
     if isinstance(appliance_data, HBAppliance):
         entities.append(
             ElectroluxChildLockSwitch(appliance_data, coordinator)
+        )
+
+    # SO oven child lock (via raw API)
+    if isinstance(appliance_data, SOAppliance):
+        entities.append(
+            ElectroluxOvenChildLockSwitch(appliance_data, coordinator)
         )
 
     # Refrigerator vacation mode
@@ -112,6 +128,52 @@ class ElectroluxCavityLightSwitch(ElectroluxBaseEntity, SwitchEntity):
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn off cavity light."""
         command = self._ov.get_cavity_light_command(False)
+        await self.coordinator.client.send_command(self.appliance_id, command)
+        await self.coordinator.async_request_refresh()
+
+
+class ElectroluxSOCavityLightSwitch(ElectroluxBaseEntity, SwitchEntity):
+    """Switch for SO oven per-cavity light."""
+
+    _attr_translation_key = "cavity_light"
+    _attr_icon = "mdi:lightbulb"
+
+    def __init__(
+        self,
+        appliance_data: SOAppliance,
+        coordinator: ElectroluxDataUpdateCoordinator,
+        cavity: str,
+    ) -> None:
+        """Initialize."""
+        super().__init__(appliance_data, coordinator)
+        self._so = appliance_data
+        self._cavity = cavity
+        prefix = cavity.lower().replace(" ", "_")
+        self._attr_unique_id = (
+            f"{appliance_data.appliance.applianceId}_{prefix}_cavity_light"
+        )
+        self._attr_name = "Cavity light"
+        self._update_attr_state()
+
+    def _update_attr_state(self) -> None:
+        """Update state."""
+        try:
+            light = self._so.get_current_cavity_cavity_light(self._cavity)
+            self._attr_is_on = light is not None and str(light).upper() in (
+                "ON", "TRUE", "1",
+            )
+        except Exception:
+            self._attr_is_on = None
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Turn on cavity light."""
+        command = self._so.get_cavity_light_command(self._cavity, True)
+        await self.coordinator.client.send_command(self.appliance_id, command)
+        await self.coordinator.async_request_refresh()
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Turn off cavity light."""
+        command = self._so.get_cavity_light_command(self._cavity, False)
         await self.coordinator.client.send_command(self.appliance_id, command)
         await self.coordinator.async_request_refresh()
 
@@ -195,6 +257,49 @@ class ElectroluxChildLockSwitch(ElectroluxBaseEntity, SwitchEntity):
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Disable child lock - not supported by SDK, only enable."""
         _LOGGER.warning("Child lock can only be enabled remotely")
+
+
+class ElectroluxOvenChildLockSwitch(ElectroluxBaseEntity, SwitchEntity):
+    """Switch for SO oven child lock via raw API."""
+
+    _attr_translation_key = "child_lock"
+    _attr_icon = "mdi:lock"
+
+    def __init__(
+        self,
+        appliance_data: SOAppliance,
+        coordinator: ElectroluxDataUpdateCoordinator,
+    ) -> None:
+        """Initialize."""
+        super().__init__(appliance_data, coordinator)
+        self._attr_unique_id = (
+            f"{appliance_data.appliance.applianceId}_child_lock"
+        )
+        self._attr_name = "Child lock"
+        self._update_attr_state()
+
+    def _update_attr_state(self) -> None:
+        """Update state from raw properties."""
+        try:
+            reported = self._appliance_data.state.properties.get("reported", {})
+            lock = reported.get("childLock")
+            self._attr_is_on = lock in (True, "TRUE", "true")
+        except Exception:
+            self._attr_is_on = None
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Enable child lock."""
+        await self.coordinator.client.send_command(
+            self.appliance_id, {"childLock": True}
+        )
+        await self.coordinator.async_request_refresh()
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Disable child lock."""
+        await self.coordinator.client.send_command(
+            self.appliance_id, {"childLock": False}
+        )
+        await self.coordinator.async_request_refresh()
 
 
 class ElectroluxVacationModeSwitch(ElectroluxBaseEntity, SwitchEntity):

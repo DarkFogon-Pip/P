@@ -72,6 +72,18 @@
       },
       "door": {
         "name": "Door"
+      },
+      "food_probe_inserted": {
+        "name": "Food probe inserted"
+      },
+      "water_tank_empty": {
+        "name": "Water tank empty"
+      },
+      "cleaning_reminder": {
+        "name": "Cleaning reminder"
+      },
+      "descaling_reminder": {
+        "name": "Descaling reminder"
       }
     },
     "button": {
@@ -171,6 +183,21 @@
       },
       "remote_control": {
         "name": "Remote control"
+      },
+      "door_state": {
+        "name": "Door state"
+      },
+      "food_probe_insertion": {
+        "name": "Food probe"
+      },
+      "process_phase": {
+        "name": "Process phase"
+      },
+      "water_tank": {
+        "name": "Water tank"
+      },
+      "water_tray": {
+        "name": "Water tray"
       },
       "running_time": {
         "name": "Running time"

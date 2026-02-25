@@ -20,6 +20,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from .coordinator import ElectroluxConfigEntry, ElectroluxDataUpdateCoordinator
 from .entity import ElectroluxBaseEntity
 from .entity_helper import async_setup_entities_helper
+from .sensor import PROGRAM_MAP
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -41,7 +42,17 @@ def build_entities_for_appliance(
 
     entities: list[ElectroluxBaseEntity] = []
 
-    if isinstance(appliance_data, PROGRAM_APPLIANCE_TYPES):
+    if isinstance(appliance_data, SOAppliance):
+        # SO ovens use per-cavity programs
+        try:
+            cavities = appliance_data.get_supported_cavities()
+            for cavity in cavities:
+                entities.append(
+                    ElectroluxSOProgramSelect(appliance_data, coordinator, cavity)
+                )
+        except Exception:
+            pass
+    elif isinstance(appliance_data, PROGRAM_APPLIANCE_TYPES):
         entities.append(
             ElectroluxProgramSelect(appliance_data, coordinator)
         )
@@ -85,8 +96,19 @@ class ElectroluxProgramSelect(ElectroluxBaseEntity, SelectEntity):
 
         try:
             programs = appliance_data.get_supported_programs() or []
-            self._attr_options = [str(p) for p in programs]
+            self._raw_programs = [str(p) for p in programs]
+            # Build display→raw and raw→display mappings
+            self._display_to_raw = {}
+            self._raw_to_display = {}
+            for raw in self._raw_programs:
+                display = PROGRAM_MAP.get(raw, raw.replace("_", " ").title())
+                self._display_to_raw[display] = raw
+                self._raw_to_display[raw] = display
+            self._attr_options = list(self._display_to_raw.keys())
         except Exception:
+            self._raw_programs = []
+            self._display_to_raw = {}
+            self._raw_to_display = {}
             self._attr_options = []
 
         self._update_attr_state()
@@ -95,16 +117,24 @@ class ElectroluxProgramSelect(ElectroluxBaseEntity, SelectEntity):
         """Update current program."""
         try:
             current = self._appliance_data.get_current_program()
-            self._attr_current_option = str(current) if current else None
+            if current:
+                self._attr_current_option = self._raw_to_display.get(
+                    str(current), str(current).replace("_", " ").title()
+                )
+            else:
+                self._attr_current_option = None
         except Exception:
             self._attr_current_option = None
 
     async def async_select_option(self, option: str) -> None:
         """Select a program."""
+        # Map display name back to raw enum value
+        raw_option = self._display_to_raw.get(option, option)
+
         if isinstance(self._appliance_data, OVAppliance):
-            command = self._appliance_data.get_program_command(option)
+            command = self._appliance_data.get_program_command(raw_option)
         elif isinstance(self._appliance_data, (DWAppliance, WMAppliance, WDAppliance, TDAppliance)):
-            command = self._appliance_data.get_set_program_command(option)
+            command = self._appliance_data.get_set_program_command(raw_option)
         else:
             _LOGGER.warning("Program selection not supported for this appliance type")
             return
@@ -151,5 +181,66 @@ class ElectroluxAirPurifierModeSelect(ElectroluxBaseEntity, SelectEntity):
     async def async_select_option(self, option: str) -> None:
         """Select a mode."""
         command = self._ap.get_mode_command(option)
+        await self.coordinator.client.send_command(self.appliance_id, command)
+        await self.coordinator.async_request_refresh()
+
+
+class ElectroluxSOProgramSelect(ElectroluxBaseEntity, SelectEntity):
+    """Select entity for SO oven per-cavity program."""
+
+    _attr_translation_key = "program"
+    _attr_icon = "mdi:chef-hat"
+
+    def __init__(
+        self,
+        appliance_data: SOAppliance,
+        coordinator: ElectroluxDataUpdateCoordinator,
+        cavity: str,
+    ) -> None:
+        """Initialize."""
+        super().__init__(appliance_data, coordinator)
+        self._so = appliance_data
+        self._cavity = cavity
+        prefix = cavity.lower().replace(" ", "_")
+        self._attr_unique_id = (
+            f"{appliance_data.appliance.applianceId}_{prefix}_program"
+        )
+        self._attr_name = f"Program"
+
+        try:
+            programs = appliance_data.get_cavity_supported_programs(cavity) or []
+            self._raw_programs = [str(p) for p in programs]
+            self._display_to_raw = {}
+            self._raw_to_display = {}
+            for raw in self._raw_programs:
+                display = PROGRAM_MAP.get(raw, raw.replace("_", " ").title())
+                self._display_to_raw[display] = raw
+                self._raw_to_display[raw] = display
+            self._attr_options = list(self._display_to_raw.keys())
+        except Exception:
+            self._raw_programs = []
+            self._display_to_raw = {}
+            self._raw_to_display = {}
+            self._attr_options = []
+
+        self._update_attr_state()
+
+    def _update_attr_state(self) -> None:
+        """Update current program."""
+        try:
+            current = self._so.get_current_cavity_program(self._cavity)
+            if current:
+                self._attr_current_option = self._raw_to_display.get(
+                    str(current), str(current).replace("_", " ").title()
+                )
+            else:
+                self._attr_current_option = None
+        except Exception:
+            self._attr_current_option = None
+
+    async def async_select_option(self, option: str) -> None:
+        """Select a program."""
+        raw_option = self._display_to_raw.get(option, option)
+        command = self._so.get_program_command(self._cavity, raw_option)
         await self.coordinator.client.send_command(self.appliance_id, command)
         await self.coordinator.async_request_refresh()

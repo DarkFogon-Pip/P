@@ -49,6 +49,55 @@ from .entity_helper import async_setup_entities_helper
 _LOGGER = logging.getLogger(__name__)
 
 
+# --- Human-readable value maps ---
+APPLIANCE_STATE_MAP = {
+    "OFF": "Off", "IDLE": "Idle", "RUNNING": "Running", "PAUSED": "Paused",
+    "READY_TO_START": "Ready to start", "DELAYED_START": "Delayed start",
+    "END_OF_CYCLE": "End of cycle",
+}
+PROGRAM_MAP = {
+    "TRUE_FAN": "True fan", "CONVENTIONAL_COOKING": "Conventional",
+    "FULL_STEAM": "Full steam", "GRILL": "Grill", "GRILL_FAN": "Grill fan",
+    "BOTTOM": "Bottom heat", "DEFROST": "Defrost", "PIZZA": "Pizza",
+    "KEEP_WARM": "Keep warm", "BREAD_BAKING": "Bread baking",
+    "AUGRATIN": "Au gratin", "STEAMIFY": "Steamify",
+    "MOIST_FAN_BAKING": "Moist fan baking", "HUMIDITY_HIGH": "Steam high",
+    "HUMIDITY_LOW": "Steam low", "HUMIDITY_MEDIUM": "Steam medium",
+    "DOUGH_PROVING": "Dough proving", "DRYING": "Drying",
+    "FROZEN_FOOD": "Frozen food", "PLATE_WARMING": "Plate warming",
+    "PRESERVING": "Preserving", "SLOW_COOK": "Slow cook",
+    "SOUS_VIDE": "Sous vide", "YOGHURT": "Yoghurt",
+    "STEAM_REGENERATING": "Steam regenerating",
+}
+REMOTE_CONTROL_MAP = {
+    "ENABLED": "Enabled", "DISABLED": "Disabled",
+    "NOT_SAFETY_RELEVANT_ENABLED": "Enabled (limited)",
+    "TEMPORARY_LOCKED": "Locked",
+}
+PROCESS_PHASE_MAP = {
+    "NONE": "None", "HEATING": "Heating", "COOKING": "Cooking",
+    "PRE_HEATING": "Preheating", "COOLING_DOWN": "Cooling down",
+}
+DOOR_STATE_MAP = {"OPEN": "Open", "CLOSED": "Closed"}
+FOOD_PROBE_MAP = {"INSERTED": "Inserted", "NOT_INSERTED": "Not inserted"}
+WATER_TANK_MAP = {"OK": "OK", "EMPTY": "Empty", "STEAM_TANK_FULL": "Full"}
+
+
+def _map_value(value, mapping):
+    """Map a raw enum value to a human-readable string."""
+    if value is None:
+        return None
+    return mapping.get(str(value), str(value).replace("_", " ").title())
+
+
+def _get_raw_property(appliance_data, key):
+    """Get a raw property from the reported state."""
+    try:
+        return appliance_data.state.properties.get("reported", {}).get(key)
+    except Exception:
+        return None
+
+
 @dataclass(frozen=True, kw_only=True)
 class ElectroluxSensorDescription(SensorEntityDescription):
     """Sensor description for Electrolux sensors."""
@@ -63,7 +112,7 @@ OVEN_SENSORS: tuple[ElectroluxSensorDescription, ...] = (
         key="ov_appliance_state",
         translation_key="appliance_state",
         icon="mdi:information-outline",
-        value_fn=lambda a: a.get_current_appliance_state(),
+        value_fn=lambda a: _map_value(a.get_current_appliance_state(), APPLIANCE_STATE_MAP),
     ),
     ElectroluxSensorDescription(
         key="ov_display_temperature",
@@ -96,7 +145,7 @@ OVEN_SENSORS: tuple[ElectroluxSensorDescription, ...] = (
         key="ov_current_program",
         translation_key="current_program",
         icon="mdi:chef-hat",
-        value_fn=lambda a: a.get_current_program(),
+        value_fn=lambda a: _map_value(a.get_current_program(), PROGRAM_MAP),
     ),
     ElectroluxSensorDescription(
         key="ov_running_time",
@@ -114,9 +163,168 @@ OVEN_SENSORS: tuple[ElectroluxSensorDescription, ...] = (
         icon="mdi:remote",
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
-        value_fn=lambda a: a.get_current_remote_control(),
+        value_fn=lambda a: _map_value(a.get_current_remote_control(), REMOTE_CONTROL_MAP),
+    ),
+    ElectroluxSensorDescription(
+        key="ov_door_state",
+        translation_key="door_state",
+        icon="mdi:door",
+        value_fn=lambda a: _map_value(a.get_current_door_state(), DOOR_STATE_MAP),
+    ),
+    ElectroluxSensorDescription(
+        key="ov_food_probe_insertion",
+        translation_key="food_probe_insertion",
+        icon="mdi:thermometer-probe",
+        value_fn=lambda a: _map_value(
+            a.get_current_food_probe_insertion_state()
+            if hasattr(a, "get_current_food_probe_insertion_state")
+            else _get_raw_property(a, "foodProbeInsertionState"),
+            FOOD_PROBE_MAP,
+        ),
+    ),
+    ElectroluxSensorDescription(
+        key="ov_process_phase",
+        translation_key="process_phase",
+        icon="mdi:progress-clock",
+        value_fn=lambda a: _map_value(
+            a.get_current_process_phase()
+            if hasattr(a, "get_current_process_phase")
+            else _get_raw_property(a, "processPhase"),
+            PROCESS_PHASE_MAP,
+        ),
+    ),
+    ElectroluxSensorDescription(
+        key="ov_water_tank",
+        translation_key="water_tank",
+        icon="mdi:water",
+        value_fn=lambda a: _map_value(
+            _get_raw_property(a, "waterTankLevel")
+            or _get_raw_property(a, "waterTankEmpty"),
+            WATER_TANK_MAP,
+        ),
+    ),
+    ElectroluxSensorDescription(
+        key="ov_water_tray",
+        translation_key="water_tray",
+        icon="mdi:tray-full",
+        value_fn=lambda a: _map_value(
+            _get_raw_property(a, "waterTrayInsertionState"),
+            {"INSERTED": "Inserted", "NOT_INSERTED": "Not inserted"},
+        ),
     ),
 )
+
+# --- SO oven raw property sensors (not per-cavity) ---
+SO_RAW_SENSORS: tuple[ElectroluxSensorDescription, ...] = (
+    ElectroluxSensorDescription(
+        key="so_water_tank",
+        translation_key="water_tank",
+        icon="mdi:water",
+        value_fn=lambda a: _map_value(
+            _get_raw_property(a, "waterTankLevel")
+            or _get_raw_property(a, "waterTankEmpty"),
+            WATER_TANK_MAP,
+        ),
+    ),
+    ElectroluxSensorDescription(
+        key="so_water_tray",
+        translation_key="water_tray",
+        icon="mdi:tray-full",
+        value_fn=lambda a: _map_value(
+            _get_raw_property(a, "waterTrayInsertionState"),
+            {"INSERTED": "Inserted", "NOT_INSERTED": "Not inserted"},
+        ),
+    ),
+)
+
+
+def _build_so_cavity_sensors(
+    appliance_data: SOAppliance,
+    coordinator: ElectroluxDataUpdateCoordinator,
+    cavity: str,
+) -> list[ElectroluxBaseEntity]:
+    """Build per-cavity sensors for SO appliance."""
+    prefix = cavity.lower().replace(" ", "_")
+    entities: list[ElectroluxBaseEntity] = []
+
+    # Use default args in lambdas to capture cavity value
+    descs = [
+        ElectroluxSensorDescription(
+            key=f"so_{prefix}_appliance_state",
+            translation_key="appliance_state",
+            icon="mdi:information-outline",
+            value_fn=lambda a, c=cavity: _map_value(
+                a.get_current_cavity_appliance_state(c), APPLIANCE_STATE_MAP
+            ),
+        ),
+        ElectroluxSensorDescription(
+            key=f"so_{prefix}_display_temperature",
+            translation_key="display_temperature",
+            icon="mdi:thermometer",
+            device_class=SensorDeviceClass.TEMPERATURE,
+            state_class=SensorStateClass.MEASUREMENT,
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+            value_fn=lambda a, c=cavity: a.get_current_cavity_display_temperature_c(c),
+        ),
+        ElectroluxSensorDescription(
+            key=f"so_{prefix}_food_probe_temperature",
+            translation_key="food_probe_temperature",
+            icon="mdi:thermometer-probe",
+            device_class=SensorDeviceClass.TEMPERATURE,
+            state_class=SensorStateClass.MEASUREMENT,
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+            value_fn=lambda a, c=cavity: a.get_current_cavity_display_food_probe_temperature_c(c),
+        ),
+        ElectroluxSensorDescription(
+            key=f"so_{prefix}_time_to_end",
+            translation_key="time_to_end",
+            icon="mdi:timer-outline",
+            device_class=SensorDeviceClass.DURATION,
+            native_unit_of_measurement=UnitOfTime.SECONDS,
+            entity_category=EntityCategory.DIAGNOSTIC,
+            value_fn=lambda a, c=cavity: a.get_current_cavity_time_to_end(c),
+        ),
+        ElectroluxSensorDescription(
+            key=f"so_{prefix}_current_program",
+            translation_key="current_program",
+            icon="mdi:chef-hat",
+            value_fn=lambda a, c=cavity: _map_value(
+                a.get_current_cavity_program(c), PROGRAM_MAP
+            ),
+        ),
+        ElectroluxSensorDescription(
+            key=f"so_{prefix}_running_time",
+            translation_key="running_time",
+            icon="mdi:timer",
+            device_class=SensorDeviceClass.DURATION,
+            native_unit_of_measurement=UnitOfTime.SECONDS,
+            entity_category=EntityCategory.DIAGNOSTIC,
+            entity_registry_enabled_default=False,
+            value_fn=lambda a, c=cavity: a.get_current_cavity_running_time(c),
+        ),
+        ElectroluxSensorDescription(
+            key=f"so_{prefix}_door_state",
+            translation_key="door_state",
+            icon="mdi:door",
+            value_fn=lambda a, c=cavity: _map_value(
+                a.get_current_cavity_door_state(c), DOOR_STATE_MAP
+            ),
+        ),
+        ElectroluxSensorDescription(
+            key=f"so_{prefix}_food_probe_insertion",
+            translation_key="food_probe_insertion",
+            icon="mdi:thermometer-probe",
+            value_fn=lambda a, c=cavity: _map_value(
+                a.get_current_cavity_food_probe_insertion_state(c), FOOD_PROBE_MAP
+            ),
+        ),
+    ]
+
+    for desc in descs:
+        entities.append(ElectroluxSensor(appliance_data, coordinator, desc))
+
+    return entities
+
 
 # --- AC sensors ---
 AC_SENSORS: tuple[ElectroluxSensorDescription, ...] = (
@@ -337,11 +545,38 @@ def build_entities_for_appliance(
 
     entities: list[ElectroluxBaseEntity] = []
 
-    if isinstance(appliance_data, (OVAppliance, SOAppliance)):
+    if isinstance(appliance_data, OVAppliance) and not isinstance(appliance_data, SOAppliance):
         entities.extend(
             ElectroluxSensor(appliance_data, coordinator, desc)
             for desc in OVEN_SENSORS
         )
+    elif isinstance(appliance_data, SOAppliance):
+        # SO uses cavity-based methods — create per-cavity sensors
+        # Remote control is top-level on SO
+        entities.append(
+            ElectroluxSensor(
+                appliance_data, coordinator,
+                ElectroluxSensorDescription(
+                    key="so_remote_control",
+                    translation_key="remote_control",
+                    icon="mdi:remote",
+                    entity_category=EntityCategory.DIAGNOSTIC,
+                    entity_registry_enabled_default=False,
+                    value_fn=lambda a: _map_value(a.get_current_remote_control(), REMOTE_CONTROL_MAP),
+                ),
+            )
+        )
+        # Raw property sensors (top-level, not per-cavity)
+        for desc in SO_RAW_SENSORS:
+            entities.append(ElectroluxSensor(appliance_data, coordinator, desc))
+        try:
+            cavities = appliance_data.get_supported_cavities()
+            for cavity in cavities:
+                entities.extend(
+                    _build_so_cavity_sensors(appliance_data, coordinator, cavity)
+                )
+        except Exception:
+            _LOGGER.debug("Could not get SO cavities for %s", appliance_id)
     elif isinstance(appliance_data, (ACAppliance, DAMACAppliance)):
         entities.extend(
             ElectroluxSensor(appliance_data, coordinator, desc)
