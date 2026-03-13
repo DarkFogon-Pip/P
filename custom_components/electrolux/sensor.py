@@ -3,7 +3,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 import logging
-from typing import Any
 
 from electrolux_group_developer_sdk.client.appliances.ac_appliance import ACAppliance
 from electrolux_group_developer_sdk.client.appliances.ap_appliance import APAppliance
@@ -44,7 +43,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .const import CONF_ENTRY_TYPE, ENTRY_TYPE_PROBE
-from .coordinator import ElectroluxConfigEntry, ElectroluxDataUpdateCoordinator
+from .coordinator import ElectroluxDataUpdateCoordinator
 from .entity import ElectroluxBaseEntity
 from .entity_helper import async_setup_entities_helper
 from .probe_sensor import async_setup_entry as async_setup_probe_entry

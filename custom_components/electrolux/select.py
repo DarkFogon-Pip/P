@@ -205,7 +205,7 @@ class ElectroluxSOProgramSelect(ElectroluxBaseEntity, SelectEntity):
         self._attr_unique_id = (
             f"{appliance_data.appliance.applianceId}_{prefix}_program"
         )
-        self._attr_name = f"Program"
+        self._attr_name = "Program"
 
         try:
             programs = appliance_data.get_cavity_supported_programs(cavity) or []
