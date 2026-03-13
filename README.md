@@ -32,6 +32,7 @@ A feature-complete Home Assistant integration for **Electrolux**, **AEG**, **Fri
 | **Air purifier** | Fuji, Muju, PUREA9, Verbier, WELLA5, WELLA7 | Fan (speed %/presets), PM1/PM2.5/PM10/TVOC sensors, power switch |
 | **Dehumidifier** | DH, Husky | Climate (humidity/fan control), humidity sensor |
 | **Oven** | OV | Temp sensors, program select, target temp, cavity light, start/stop buttons |
+| **Standalone food probe** | FS_2.0 family | Battery, ambient temp, food probe temp |
 | **Structured oven** | SO | Same as oven, per-cavity |
 | **Refrigerator** | CR | Per-cavity temp sensors & controls, door sensors, vacation mode |
 | **Hob (cooktop)** | HB | State sensor, child lock switch |
@@ -73,12 +74,41 @@ Before installing, you need credentials from the **Electrolux Developer Portal**
 
 1. Go to **Settings** → **Devices & Services** → **Add Integration**
 2. Search for **Electrolux**
-3. Enter your API key, access token, and refresh token
-4. Your appliances will be discovered and added automatically
+3. Choose either your Electrolux account or a standalone BLE probe
+4. For cloud appliances, enter your API key, access token, and refresh token
+5. Your supported devices will be discovered and added automatically
 
 ### Updating credentials
 
 Go to **Settings** → **Devices & Services** → **Electrolux** → **Configure** to update tokens without removing and re-adding the integration.
+
+### Standalone BLE food probe
+
+The integration can also add a standalone Electrolux / AEG food probe over
+Bluetooth. This path is separate from the Electrolux cloud API.
+
+Requirements:
+
+- A connectable Home Assistant Bluetooth scanner, such as an ESPHome BLE proxy
+- The probe must be close enough to connect
+- The probe must be physically woken before Home Assistant can attach
+
+Enabled sensors:
+
+- Food probe temperature
+- Ambient temperature
+- Battery
+
+Diagnostic sensors remain available but are disabled by default.
+
+For wake behavior, recovery steps, and development notes, see
+[docs/standalone_probe.md](docs/standalone_probe.md).
+For the short operator flow, see
+[docs/probe_operator_cheatsheet.md](docs/probe_operator_cheatsheet.md).
+For a one-command status check, copy `tools/probe_tools.env.example` to a local
+`.env` and run `python tools/probe_healthcheck.py --ha-env-file .env`.
+For a compact green/yellow/red summary, use
+`python tools/probe_status_summary.py --ha-env-file .env`.
 
 ## Entities per appliance
 

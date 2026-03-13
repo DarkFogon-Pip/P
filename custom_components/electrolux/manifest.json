@@ -1,8 +1,16 @@
 {
   "domain": "electrolux",
   "name": "Electrolux",
+  "bluetooth": [
+    {
+      "connectable": true,
+      "local_name": "FS_*",
+      "manufacturer_id": 1797
+    }
+  ],
   "codeowners": ["@DarkFogon-Pip"],
   "config_flow": true,
+  "dependencies": ["bluetooth_adapters"],
   "documentation": "https://github.com/DarkFogon-Pip/P",
   "integration_type": "hub",
   "iot_class": "cloud_push",

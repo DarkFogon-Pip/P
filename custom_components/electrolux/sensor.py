@@ -32,6 +32,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
     StateType,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
     EntityCategory,
@@ -42,9 +43,11 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
+from .const import CONF_ENTRY_TYPE, ENTRY_TYPE_PROBE
 from .coordinator import ElectroluxConfigEntry, ElectroluxDataUpdateCoordinator
 from .entity import ElectroluxBaseEntity
 from .entity_helper import async_setup_entities_helper
+from .probe_sensor import async_setup_entry as async_setup_probe_entry
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -651,10 +654,14 @@ def build_entities_for_appliance(
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ElectroluxConfigEntry,
+    entry: ConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up sensor entities."""
+    if entry.data.get(CONF_ENTRY_TYPE) == ENTRY_TYPE_PROBE:
+        await async_setup_probe_entry(hass, entry, async_add_entities)
+        return
+
     await async_setup_entities_helper(
         hass, entry, async_add_entities, build_entities_for_appliance
     )

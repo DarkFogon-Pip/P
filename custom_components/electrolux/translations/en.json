@@ -1,7 +1,9 @@
 {
   "config": {
     "abort": {
-      "already_configured": "This Electrolux account is already configured."
+      "already_configured": "This Electrolux device is already configured.",
+      "no_probe_devices_found": "No standalone Electrolux probes were found nearby.",
+      "not_supported": "This Bluetooth device is not supported by the Electrolux integration."
     },
     "error": {
       "cannot_connect": "Unable to connect to the Electrolux API. Please check your credentials.",
@@ -10,6 +12,13 @@
     },
     "step": {
       "user": {
+        "menu_options": {
+          "cloud_account": "Electrolux account",
+          "probe": "Standalone BLE probe"
+        },
+        "title": "Add an Electrolux device"
+      },
+      "cloud_account": {
         "data": {
           "api_key": "API key",
           "access_token": "Access token",
@@ -22,6 +31,17 @@
         },
         "description": "Please [click here]({portal_link}) to generate new tokens, then paste them below.",
         "title": "Configure your Electrolux account"
+      },
+      "probe": {
+        "data": {
+          "address": "Probe"
+        },
+        "description": "Choose a nearby standalone Electrolux food probe.",
+        "title": "Add Electrolux probe"
+      },
+      "bluetooth_confirm": {
+        "description": "Do you want to add the Electrolux probe {name}?",
+        "title": "Set up Electrolux probe"
       },
       "reauth_confirm": {
         "data": {
