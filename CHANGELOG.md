@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.3.0] - 2026-03-13
+
+### Major: Standalone SensePro BLE Food Probe Support
+
+This release adds support for newer standalone Electrolux / AEG SensePro food
+probes that advertise as `FS_*` devices over Bluetooth, alongside the existing
+cloud appliance integration.
+
+### New Features
+
+- Standalone BLE probe config flow with Bluetooth discovery and manual address entry
+- Dedicated probe coordinator and sensor platform
+- Correct food temperature decoding from the probe's `raw_blob_1` payload
+- Battery, ambient temperature, and food probe temperature entities
+- Probe health-check and status-summary tools
+- Operator documentation for wake/sleep behavior, recovery, and calibration boundaries
+
+### Validation and Quality
+
+- Added regression tests for probe decoding and status tooling
+- Expanded CI to run unit tests in addition to lint and Home Assistant validation
+- Added local brand assets for the Electrolux integration
+- Fixed repository validation issues so PR and mainline checks pass cleanly
+
+### Notes
+
+- SensePro probe calibration remains a hob-side workflow
+- The integration reads calibrated values over BLE, but does not trigger calibration itself
+
 ## [0.2.0] - 2026-02-25
 
 ### Major: SO Oven Cavity-Aware Architecture
