@@ -10,6 +10,7 @@ from electrolux_group_developer_sdk.client.failed_connection_exception import (
     FailedConnectionException,
 )
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_ACCESS_TOKEN, CONF_API_KEY, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
@@ -17,16 +18,24 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 
 from .api import ElectroluxApiClient
-from .const import CONF_REFRESH_TOKEN, DOMAIN, NEW_APPLIANCE, USER_AGENT
+from .const import (
+    CONF_ENTRY_TYPE,
+    CONF_REFRESH_TOKEN,
+    DOMAIN,
+    ENTRY_TYPE_PROBE,
+    NEW_APPLIANCE,
+    USER_AGENT,
+)
 from .coordinator import (
     ElectroluxConfigEntry,
     ElectroluxData,
     ElectroluxDataUpdateCoordinator,
 )
+from .probe_coordinator import ElectroluxProbeDataUpdateCoordinator
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-PLATFORMS = [
+CLOUD_PLATFORMS = [
     Platform.BINARY_SENSOR,
     Platform.BUTTON,
     Platform.CLIMATE,
@@ -36,10 +45,17 @@ PLATFORMS = [
     Platform.SENSOR,
     Platform.SWITCH,
 ]
+PROBE_PLATFORMS = [Platform.SENSOR]
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ElectroluxConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Electrolux integration entry."""
+    if entry.data.get(CONF_ENTRY_TYPE) == ENTRY_TYPE_PROBE:
+        coordinator = ElectroluxProbeDataUpdateCoordinator(hass, entry)
+        await coordinator.async_config_entry_first_refresh()
+        entry.runtime_data = coordinator
+        await hass.config_entries.async_forward_entry_setups(entry, PROBE_PLATFORMS)
+        return True
 
     def save_tokens(new_access: str, new_refresh: str, api_key: str) -> None:
         hass.config_entries.async_update_entry(
@@ -96,29 +112,36 @@ async def async_setup_entry(hass: HomeAssistant, entry: ElectroluxConfigEntry) -
         sse_task=sse_task,
     )
 
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    await hass.config_entries.async_forward_entry_setups(entry, CLOUD_PLATFORMS)
 
     return True
 
 
 async def async_unload_entry(
-    hass: HomeAssistant, entry: ElectroluxConfigEntry
+    hass: HomeAssistant, entry: ConfigEntry
 ) -> bool:
     """Unload a config entry."""
-    runtime_data = entry.runtime_data
-    if runtime_data:
-        for coordinator in runtime_data.coordinators.values():
-            coordinator.remove_listeners()
+    platforms = CLOUD_PLATFORMS
+    if entry.data.get(CONF_ENTRY_TYPE) == ENTRY_TYPE_PROBE:
+        platforms = PROBE_PLATFORMS
+        runtime_data = entry.runtime_data
+        if runtime_data:
+            await runtime_data.async_disconnect()
+    else:
+        runtime_data = entry.runtime_data
+        if runtime_data:
+            for coordinator in runtime_data.coordinators.values():
+                coordinator.remove_listeners()
 
-        sse_task = runtime_data.sse_task
-        if sse_task:
-            sse_task.cancel()
-            try:
-                await sse_task
-            except CancelledError:
-                _LOGGER.info("SSE stream cancelled for entry %s", entry.entry_id)
+            sse_task = runtime_data.sse_task
+            if sse_task:
+                sse_task.cancel()
+                try:
+                    await sse_task
+                except CancelledError:
+                    _LOGGER.info("SSE stream cancelled for entry %s", entry.entry_id)
 
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    return await hass.config_entries.async_unload_platforms(entry, platforms)
 
 
 class ElectroluxTokenManager(TokenManager):

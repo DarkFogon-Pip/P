@@ -1,7 +1,6 @@
 """Fan platform for Electrolux integration."""
 
 import logging
-import math
 from typing import Any
 
 from electrolux_group_developer_sdk.client.appliances.ap_appliance import APAppliance
